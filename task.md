@@ -40,7 +40,10 @@
   - [x] Video Progress Module (heartbeat, watch sessions, history, continue-watching, teacher report)
 - [x] Assignment System
   - [x] Assignments Module (CRUD, publish, close, notification on publish)
+  - [x] Assignment attachments persisted in JSON metadata
+  - [x] Assignment list/detail scoped by role (Admin all, Teacher own, Student own standard)
   - [x] Submissions Module (submit, resubmit, evaluate, student history)
+  - [x] Submission file URL, MIME, size, count, deadline, and role ownership validation
 - [x] Notifications Module
   - [x] In-app notification retrieval, mark read, delete
   - [x] Admin broadcast endpoint
@@ -48,12 +51,16 @@
 - [x] Analytics Module
   - [x] Admin overview, watch hours, submission rate, DAU trend
   - [x] Teacher student progress & lesson engagement
+  - [x] Teacher lesson engagement ownership guard
   - [x] Student progress, streak, and daily watch time
 - [x] Profile Management
   - [x] Students Module (CRUD, standard enrollment, parent details)
   - [x] Teachers Module (CRUD, qualifications, bio)
 - [x] Uploads Module
   - [x] Cloudinary file upload with MIME and size validation
+- [x] Shared Packages Completion
+  - [x] `@myclass/shared` TypeScript types exports
+  - [x] `@myclass/validation` Zod schemas for auth, academic, video, assignment, and submission payloads
 
 ---
 

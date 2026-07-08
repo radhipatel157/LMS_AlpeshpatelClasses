@@ -52,7 +52,7 @@ export class AnalyticsController {
   @Roles(UserRole.TEACHER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Per-student engagement for a lesson (Teacher/Admin)' })
   getTeacherEngagement(@GetUser() user: AuthenticatedUser, @Param('lessonId') lessonId: string) {
-    return this.service.getTeacherLessonEngagement(user.id, lessonId);
+    return this.service.getTeacherLessonEngagement(user.id, user.role, lessonId);
   }
 
   @Get('student/progress')

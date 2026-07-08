@@ -1,5 +1,42 @@
-import { IsString, IsInt, IsOptional, IsBoolean, IsDateString, IsArray, Min, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsOptional,
+  IsBoolean,
+  IsDateString,
+  IsArray,
+  Min,
+  IsUUID,
+  IsUrl,
+  Max,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { MAX_FILE_SIZE_BYTES } from '@myclass/shared';
+
+export class AssignmentAttachmentDto {
+  @ApiProperty({ example: 'https://res.cloudinary.com/...' })
+  @IsUrl({ require_protocol: true })
+  url: string;
+
+  @ApiPropertyOptional({ example: 'lesson-notes.pdf' })
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  @ApiPropertyOptional({ example: 'application/pdf' })
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @ApiPropertyOptional({ example: 1024000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_FILE_SIZE_BYTES)
+  fileSize?: number;
+}
 
 export class CreateAssignmentDto {
   @ApiProperty()
@@ -29,6 +66,13 @@ export class CreateAssignmentDto {
   @IsArray()
   @IsString({ each: true })
   allowedFileTypes?: string[];
+
+  @ApiPropertyOptional({ type: [AssignmentAttachmentDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AssignmentAttachmentDto)
+  attachments?: AssignmentAttachmentDto[];
 
   @ApiPropertyOptional({ default: false })
   @IsOptional()

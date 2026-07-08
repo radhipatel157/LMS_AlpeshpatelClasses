@@ -24,8 +24,8 @@ export class SubmissionsController {
   @Get(':assignmentId')
   @Roles(UserRole.TEACHER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all submissions for an assignment (Teacher/Admin)' })
-  findByAssignment(@Param('assignmentId') assignmentId: string) {
-    return this.service.findByAssignment(assignmentId);
+  findByAssignment(@GetUser() user: AuthenticatedUser, @Param('assignmentId') assignmentId: string) {
+    return this.service.findByAssignment(user.id, user.role, assignmentId);
   }
 
   @Post()
@@ -54,6 +54,6 @@ export class SubmissionsController {
     @Param('id') id: string,
     @Body() dto: EvaluateSubmissionDto,
   ) {
-    return this.service.evaluate(user.id, id, dto);
+    return this.service.evaluate(user.id, user.role, id, dto);
   }
 }

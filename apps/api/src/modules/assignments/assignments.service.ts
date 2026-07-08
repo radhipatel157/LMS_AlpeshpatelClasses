@@ -1,14 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateAssignmentDto, UpdateAssignmentDto } from './dto/assignment.dto';
+import { UserRole } from '@myclass/shared';
 
 @Injectable()
 export class AssignmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(lessonId?: string) {
+  async findAll(userId: string, role: string, lessonId?: string) {
+    const roleWhere = this.getAssignmentVisibilityWhere(userId, role);
     return this.prisma.assignment.findMany({
-      where: { deletedAt: null, ...(lessonId ? { lessonId } : {}) },
+      where: { deletedAt: null, ...roleWhere, ...(lessonId ? { lessonId } : {}) },
       orderBy: { createdAt: 'desc' },
       include: {
         lesson: { include: { chapter: { include: { subject: { include: { standard: true } } } } } },
@@ -17,12 +20,16 @@ export class AssignmentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userId?: string, role?: string) {
+    const roleWhere = userId && role ? this.getAssignmentVisibilityWhere(userId, role) : {};
     const assignment = await this.prisma.assignment.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, ...roleWhere },
       include: {
         lesson: { include: { chapter: { include: { subject: { include: { standard: true } } } } } },
-        submissions: { include: { student: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
+        submissions: {
+          where: role === UserRole.STUDENT ? { studentId: userId } : undefined,
+          include: { student: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+        },
       },
     });
     if (!assignment) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Assignment not found' });
@@ -43,14 +50,14 @@ export class AssignmentsService {
         deadline: new Date(dto.dueDate),
         totalMarks: dto.maxMarks,
         allowResubmission: dto.allowResubmission ?? false,
-        attachments: [], // JSON format
+        attachments: (dto.attachments ?? []) as unknown as Prisma.InputJsonValue,
         status: 'draft',
       },
     });
   }
 
-  async update(id: string, dto: UpdateAssignmentDto) {
-    await this.findOne(id);
+  async update(id: string, userId: string, role: string, dto: UpdateAssignmentDto) {
+    await this.ensureCanManageAssignment(id, userId, role);
     return this.prisma.assignment.update({
       where: { id },
       data: {
@@ -59,12 +66,13 @@ export class AssignmentsService {
         deadline: dto.dueDate ? new Date(dto.dueDate) : undefined,
         totalMarks: dto.maxMarks,
         allowResubmission: dto.allowResubmission,
+        attachments: dto.attachments ? (dto.attachments as unknown as Prisma.InputJsonValue) : undefined,
       },
     });
   }
 
-  async publish(id: string) {
-    const assignment = await this.findOne(id);
+  async publish(id: string, userId: string, role: string) {
+    const assignment = await this.ensureCanManageAssignment(id, userId, role);
     const updated = await this.prisma.assignment.update({
       where: { id },
       data: { status: 'published' },
@@ -100,20 +108,51 @@ export class AssignmentsService {
     return updated;
   }
 
-  async close(id: string) {
-    await this.findOne(id);
+  async close(id: string, userId: string, role: string) {
+    await this.ensureCanManageAssignment(id, userId, role);
     return this.prisma.assignment.update({
       where: { id },
       data: { status: 'closed' },
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userId: string, role: string) {
+    await this.ensureCanManageAssignment(id, userId, role);
     await this.prisma.assignment.update({
       where: { id },
       data: { deletedAt: new Date(), status: 'archived' },
     });
     return { message: 'Assignment soft-deleted successfully' };
+  }
+
+  private getAssignmentVisibilityWhere(userId: string, role: string): Prisma.AssignmentWhereInput {
+    if (role === UserRole.ADMIN) return {};
+    if (role === UserRole.TEACHER) return { teacherId: userId };
+    if (role === UserRole.STUDENT) {
+      return {
+        status: 'published',
+        lesson: {
+          chapter: {
+            subject: {
+              standard: {
+                students: { some: { userId } },
+              },
+            },
+          },
+        },
+      };
+    }
+    return { id: '__never__' };
+  }
+
+  private async ensureCanManageAssignment(id: string, userId: string, role: string) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!assignment) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Assignment not found' });
+    if (role !== UserRole.ADMIN && assignment.teacherId !== userId) {
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only manage your own assignments' });
+    }
+    return assignment;
   }
 }

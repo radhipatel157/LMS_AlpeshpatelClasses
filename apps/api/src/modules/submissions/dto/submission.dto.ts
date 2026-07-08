@@ -1,20 +1,36 @@
-import { IsString, IsInt, IsOptional, IsArray, IsUUID, Min, Max, ArrayMaxSize, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsOptional,
+  IsArray,
+  IsUUID,
+  IsUrl,
+  IsIn,
+  Min,
+  Max,
+  ArrayMaxSize,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ALLOWED_SUBMISSION_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '@myclass/shared';
 
 export class SubmissionFileDto {
   @ApiProperty({ example: 'https://res.cloudinary.com/...' })
-  @IsString()
+  @IsUrl({ require_protocol: true })
   url!: string;
 
   @ApiPropertyOptional({ example: 'application/pdf' })
   @IsOptional()
   @IsString()
+  @IsIn(ALLOWED_SUBMISSION_MIME_TYPES)
   mimeType?: string;
 
   @ApiPropertyOptional({ example: 1024000 })
   @IsOptional()
   @IsInt()
+  @Min(1)
+  @Max(MAX_FILE_SIZE_BYTES)
   fileSize?: number;
 
   @ApiPropertyOptional({ example: 'homework.pdf' })
@@ -60,3 +76,4 @@ export class EvaluateSubmissionDto {
   @IsString()
   status!: string;
 }
+  

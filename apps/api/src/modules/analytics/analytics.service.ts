@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { UserRole } from '@myclass/shared';
 
 @Injectable()
 export class AnalyticsService {
@@ -148,12 +149,21 @@ export class AnalyticsService {
     return { students: studentProgress, weakStudents };
   }
 
-  async getTeacherLessonEngagement(teacherId: string, lessonId: string) {
+  async getTeacherLessonEngagement(teacherId: string, role: string, lessonId: string) {
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId, deletedAt: null },
-      include: { videos: { where: { deletedAt: null } } },
+      include: {
+        videos: { where: { deletedAt: null } },
+        assignments: { where: { teacherId, deletedAt: null }, select: { id: true } },
+      },
     });
     if (!lesson) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Lesson not found' });
+    if (role !== UserRole.ADMIN && lesson.assignments.length === 0) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'You can only view engagement for lessons connected to your assignments',
+      });
+    }
 
     const videoIds = lesson.videos.map((v) => v.id);
     const progress = await this.prisma.videoProgress.findMany({

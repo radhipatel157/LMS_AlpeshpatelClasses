@@ -17,14 +17,14 @@ export class AssignmentsController {
   @Get()
   @ApiOperation({ summary: 'Get all assignments, optionally filtered by lesson' })
   @ApiQuery({ name: 'lessonId', required: false })
-  findAll(@Query('lessonId') lessonId?: string) {
-    return this.service.findAll(lessonId);
+  findAll(@GetUser() user: AuthenticatedUser, @Query('lessonId') lessonId?: string) {
+    return this.service.findAll(user.id, user.role, lessonId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get details of an assignment with all student submissions' })
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@GetUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.findOne(id, user.id, user.role);
   }
 
   @Post()
@@ -37,28 +37,28 @@ export class AssignmentsController {
   @Patch(':id/publish')
   @Roles(UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Publish assignment and notify students (Admin/Teacher only)' })
-  publish(@Param('id') id: string) {
-    return this.service.publish(id);
+  publish(@GetUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.publish(id, user.id, user.role);
   }
 
   @Patch(':id/close')
   @Roles(UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Close assignment to halt standard submissions (Admin/Teacher only)' })
-  close(@Param('id') id: string) {
-    return this.service.close(id);
+  close(@GetUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.close(id, user.id, user.role);
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Update assignment details (Admin/Teacher only)' })
-  update(@Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
-    return this.service.update(id, dto);
+  update(@GetUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateAssignmentDto) {
+    return this.service.update(id, user.id, user.role, dto);
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Soft delete assignment (Admin/Teacher only)' })
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  remove(@GetUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.service.remove(id, user.id, user.role);
   }
 }

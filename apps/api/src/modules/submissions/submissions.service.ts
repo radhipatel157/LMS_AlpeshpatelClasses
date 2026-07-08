@@ -1,18 +1,25 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateSubmissionDto, ResubmitDto, EvaluateSubmissionDto } from './dto/submission.dto';
-import { MAX_FILES_PER_SUBMISSION, NotificationType } from '@myclass/shared';
+import { CreateSubmissionDto, ResubmitDto, EvaluateSubmissionDto, SubmissionFileDto } from './dto/submission.dto';
+import {
+  ALLOWED_SUBMISSION_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILES_PER_SUBMISSION,
+  NotificationType,
+  UserRole,
+} from '@myclass/shared';
 
 @Injectable()
 export class SubmissionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByAssignment(assignmentId: string) {
+  async findByAssignment(userId: string, role: string, assignmentId: string) {
     const assignment = await this.prisma.assignment.findFirst({
       where: { id: assignmentId, deletedAt: null },
     });
     if (!assignment) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Assignment not found' });
+    this.assertCanManageAssignment(userId, role, assignment.teacherId);
 
     return this.prisma.assignmentSubmission.findMany({
       where: { assignmentId },
@@ -54,12 +61,10 @@ export class SubmissionsService {
       throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Assignment is not open for submissions' });
     }
 
-    if (dto.files.length === 0 || dto.files.length > MAX_FILES_PER_SUBMISSION) {
-      throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
-        message: `Between 1 and ${MAX_FILES_PER_SUBMISSION} files required`,
-      });
+    if (new Date() > assignment.deadline) {
+      throw new BadRequestException({ code: 'DEADLINE_PASSED', message: 'Deadline has passed' });
     }
+    this.validateSubmissionFiles(dto.files);
 
     const existing = await this.prisma.assignmentSubmission.findFirst({
       where: { assignmentId: dto.assignmentId, studentId },
@@ -68,15 +73,12 @@ export class SubmissionsService {
       throw new BadRequestException({ code: 'CONFLICT', message: 'Submission already exists. Use resubmit endpoint.' });
     }
 
-    const now = new Date();
-    const isLate = now > assignment.deadline;
-
     const submission = await this.prisma.assignmentSubmission.create({
       data: {
         assignmentId: dto.assignmentId,
         studentId,
         submittedFiles: dto.files as unknown as Prisma.InputJsonValue,
-        isLate,
+        isLate: false,
         status: 'submitted',
       },
       include: {
@@ -116,22 +118,16 @@ export class SubmissionsService {
       throw new BadRequestException({ code: 'DEADLINE_PASSED', message: 'Deadline has passed' });
     }
 
-    if (dto.files.length === 0 || dto.files.length > MAX_FILES_PER_SUBMISSION) {
-      throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
-        message: `Between 1 and ${MAX_FILES_PER_SUBMISSION} files required`,
-      });
-    }
+    this.validateSubmissionFiles(dto.files);
 
     const now = new Date();
-    const isLate = now > assignment.deadline;
 
     const updated = await this.prisma.assignmentSubmission.update({
       where: { id: submissionId },
       data: {
         submittedFiles: dto.files as unknown as Prisma.InputJsonValue,
         submittedAt: now,
-        isLate,
+        isLate: false,
         resubmissionCount: { increment: 1 },
         status: 'submitted',
         marksObtained: null,
@@ -158,12 +154,13 @@ export class SubmissionsService {
     return updated;
   }
 
-  async evaluate(evaluatorId: string, submissionId: string, dto: EvaluateSubmissionDto) {
+  async evaluate(evaluatorId: string, evaluatorRole: string, submissionId: string, dto: EvaluateSubmissionDto) {
     const submission = await this.prisma.assignmentSubmission.findUnique({
       where: { id: submissionId },
       include: { assignment: true, student: { select: { id: true, name: true } } },
     });
     if (!submission) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Submission not found' });
+    this.assertCanManageAssignment(evaluatorId, evaluatorRole, submission.assignment.teacherId);
 
     const normalizedStatus = dto.status.toLowerCase();
     if (!['approved', 'rejected'].includes(normalizedStatus)) {
@@ -209,5 +206,32 @@ export class SubmissionsService {
     });
 
     return updated;
+  }
+
+  private validateSubmissionFiles(files: SubmissionFileDto[]) {
+    if (!files || files.length === 0 || files.length > MAX_FILES_PER_SUBMISSION) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: `Between 1 and ${MAX_FILES_PER_SUBMISSION} files required`,
+      });
+    }
+
+    for (const file of files) {
+      if (file.mimeType && !ALLOWED_SUBMISSION_MIME_TYPES.includes(file.mimeType)) {
+        throw new BadRequestException({
+          code: 'INVALID_FILE_TYPE',
+          message: `File type ${file.mimeType} is not allowed`,
+        });
+      }
+      if (file.fileSize && file.fileSize > MAX_FILE_SIZE_BYTES) {
+        throw new BadRequestException({ code: 'FILE_TOO_LARGE', message: 'File exceeds 10 MB limit' });
+      }
+    }
+  }
+
+  private assertCanManageAssignment(userId: string, role: string, teacherId: string) {
+    if (role === UserRole.ADMIN) return;
+    if (role === UserRole.TEACHER && teacherId === userId) return;
+    throw new ForbiddenException({ code: 'FORBIDDEN', message: 'You can only access submissions for your own assignments' });
   }
 }
