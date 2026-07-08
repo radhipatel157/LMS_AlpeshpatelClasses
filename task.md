@@ -19,71 +19,41 @@
   - [x] Global filters and interceptors (`HttpExceptionFilter`, `ResponseInterceptor`)
   - [x] Custom decorators (`@Roles`, `@GetUser`)
   - [x] Security guards (`JwtAuthGuard`, `RolesGuard`)
+  - [x] Health check endpoint at `/api/health`
 - [x] Auth Module
   - [x] Login, logout, token refresh endpoints
   - [x] Session tracking & refresh token rotation in database
   - [x] Forgot & reset password stubs
+  - [x] `/api/auth/me`, `/api/auth/sessions`, `/api/auth/sessions/:id`
 - [x] Users Module
   - [x] Admin User CRUD operations
   - [x] Own Profile & Avatar update endpoints
-- [x] Academic Hierarchy (Part 1)
+  - [x] Profile password change (`PATCH /api/profile/password`)
+- [x] Academic Hierarchy (Complete)
   - [x] DTO definitions for academic resources
   - [x] Standards Module (CRUD & Archive)
   - [x] Subjects Module (CRUD & standard filter)
-
----
-
-## Pending Tasks (Backend)
-
-### Phase 2: Academic Structure (Continued)
-- [ ] Chapters Module
-  - [ ] Chapter CRUD operations
-  - [ ] Drag-and-drop reordering endpoint (`PATCH /chapters/reorder`)
-- [ ] Lessons Module
-  - [ ] Lesson CRUD operations
-  - [ ] Reordering endpoint (`PATCH /lessons/reorder`)
-  - [ ] Publish / Draft status toggle endpoint (`PATCH /lessons/:id/publish`)
-  - [ ] Lesson Resource CRUD (PDF notes attachments)
-
-### Phase 3: Video Learning System
-- [ ] Videos Module
-  - [ ] Video Metadata CRUD (linked to Lesson)
-  - [ ] YouTube ID extraction validation
-- [ ] Video Progress & Heartbeat Module
-  - [ ] Heartbeat endpoint (`POST /video-progress/heartbeat`)
-  - [ ] Watch Sessions tracking (`watch_sessions` table logger)
-  - [ ] Video progress history & resume-point retrieval (`GET /video-progress/:videoId`)
-  - [ ] "Continue Watching" list query for students
-  - [ ] Teacher view of student progress per video
-
-### Phase 4: Assignment System
-- [ ] Assignments Module
-  - [ ] Assignment CRUD (Teacher/Admin only)
-  - [ ] Publish (`PATCH /assignments/:id/publish`) & Close (`PATCH /assignments/:id/close`) endpoints
-- [ ] Submissions Module
-  - [ ] Submit assignment (Student PDF/attachment uploads)
-  - [ ] Submission count and late submission detection logic
-  - [ ] Evaluate submission (Teacher marks & remarks)
-  - [ ] Student personal submission history endpoint
-
-### Phase 5: Notifications & Analytics
-- [ ] Notifications Module
-  - [ ] In-app notification creation & retrieval
-  - [ ] Mark single/all notifications as read
-  - [ ] Admin notification broadcast endpoint
-  - [ ] CRON task for deadline reminder (24 hours before)
-- [ ] Analytics Module
-  - [ ] Admin overview metrics & Daily Active Users (DAU) queries
-  - [ ] Teacher classroom analytics & weak student detection (completion < 50%)
-  - [ ] Student streak counting, watch time, and radial progress queries
-
-### Phase 6: Core Profile Management & Upload integration
-- [ ] Students Module (Student profiles)
-  - [ ] CRUD operations for parent details, DOB, address
-- [ ] Teachers Module (Teacher profiles)
-  - [ ] CRUD operations for qualifications and bio
-- [ ] Uploads Module
-  - [ ] NestJS integration with Cloudinary Node SDK for signed file uploads
+  - [x] Chapters Module (CRUD & reorder)
+  - [x] Lessons Module (CRUD, reorder, publish, lesson resources)
+- [x] Video Learning System
+  - [x] Videos Module (CRUD, YouTube ID extraction)
+  - [x] Video Progress Module (heartbeat, watch sessions, history, continue-watching, teacher report)
+- [x] Assignment System
+  - [x] Assignments Module (CRUD, publish, close, notification on publish)
+  - [x] Submissions Module (submit, resubmit, evaluate, student history)
+- [x] Notifications Module
+  - [x] In-app notification retrieval, mark read, delete
+  - [x] Admin broadcast endpoint
+  - [x] CRON task for 24-hour deadline reminders
+- [x] Analytics Module
+  - [x] Admin overview, watch hours, submission rate, DAU trend
+  - [x] Teacher student progress & lesson engagement
+  - [x] Student progress, streak, and daily watch time
+- [x] Profile Management
+  - [x] Students Module (CRUD, standard enrollment, parent details)
+  - [x] Teachers Module (CRUD, qualifications, bio)
+- [x] Uploads Module
+  - [x] Cloudinary file upload with MIME and size validation
 
 ---
 
@@ -157,7 +127,7 @@
 ---
 
 ## Phase 11: End-to-End Testing & Production Setup
-- [ ] Build & Type Checking validation across Monorepo
+- [x] Build & Type Checking validation for NestJS API (`npm run build` passes)
 - [ ] Global Security Audits: Helmet rate-limiting, CORS whitelisting, cookies validation
 - [ ] NGINX VPS deployment configs & PM2 configuration setup
 - [ ] End-to-end smoke testing (register student, assign to teacher, view lesson, play video heartbeat, submit work, grade work)

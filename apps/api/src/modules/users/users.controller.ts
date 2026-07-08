@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, UpdateProfileDto, UpdateAvatarDto } from './dto/user.dto';
+import { CreateUserDto, UpdateUserDto, UpdateProfileDto, UpdateAvatarDto, ChangePasswordDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -72,5 +72,11 @@ export class UsersController {
   @ApiOperation({ summary: 'Update profile avatar URL' })
   updateAvatar(@GetUser() user: AuthenticatedUser, @Body() dto: UpdateAvatarDto) {
     return this.usersService.updateAvatar(user.id, dto.avatarUrl);
+  }
+
+  @Patch('profile/password')
+  @ApiOperation({ summary: 'Change own password' })
+  changePassword(@GetUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(user.id, dto);
   }
 }

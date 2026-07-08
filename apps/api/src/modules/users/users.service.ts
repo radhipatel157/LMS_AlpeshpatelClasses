@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from './dto/user.dto';
+import { CreateUserDto, UpdateUserDto, UpdateProfileDto, ChangePasswordDto } from './dto/user.dto';
 import { BCRYPT_SALT_ROUNDS, DEFAULT_PAGE_SIZE } from '@myclass/shared';
 
 @Injectable()
@@ -93,5 +93,20 @@ export class UsersService {
   async updateAvatar(userId: string, avatarUrl: string) {
     await this.prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
     return { avatarUrl };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException({ code: 'NOT_FOUND', message: 'User not found' });
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.prisma.session.deleteMany({ where: { userId } });
+    return { message: 'Password updated successfully' };
   }
 }

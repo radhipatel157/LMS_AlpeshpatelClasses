@@ -9,17 +9,23 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 import { BCRYPT_SALT_ROUNDS } from '@myclass/shared';
 
 @Injectable()
 export class AuthService {
+  private readonly resend: Resend | null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-  ) {}
+  ) {
+    const resendApiKey = this.config.get<string>('RESEND_API_KEY');
+    this.resend = resendApiKey && !resendApiKey.includes('your_') ? new Resend(resendApiKey) : null;
+  }
 
   // ─── Login ──────────────────────────────────────────────────────
   async login(dto: LoginDto, ip: string, deviceInfo: string) {
@@ -148,8 +154,7 @@ export class AuthService {
       create: { key: `reset_${token}`, value: JSON.stringify({ userId: user.id, expiresAt: Date.now() + 15 * 60 * 1000 }) },
     });
 
-    // TODO: Send email via Resend
-    console.log(`Password reset token for ${dto.email}: ${token}`);
+    await this.sendPasswordResetEmail(dto.email, token);
     return { message: 'If that email exists, a reset link has been sent' };
   }
 
@@ -192,5 +197,30 @@ export class AuthService {
 
   private async logActivity(userId: string, action: string, entity?: string, entityId?: string, ip?: string) {
     await this.prisma.activityLog.create({ data: { userId, action, entity, entityId, ipAddress: ip } });
+  }
+
+  private async sendPasswordResetEmail(email: string, token: string) {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const emailFrom = this.config.get<string>('EMAIL_FROM', 'noreply@myclass.in');
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+    if (!this.resend) {
+      // Keep development-friendly fallback without breaking forgot-password flow.
+      console.log(`Password reset token for ${email}: ${token}`);
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: emailFrom,
+        to: email,
+        subject: 'Reset your MyClass LMS password',
+        html: `<p>You requested a password reset.</p><p><a href="${resetUrl}">Reset Password</a></p><p>This link expires in 15 minutes.</p>`,
+      });
+    } catch (error) {
+      // Do not leak delivery failures to callers; preserve anti-enumeration response.
+      console.error('Failed to send reset password email', error);
+      console.log(`Password reset token for ${email}: ${token}`);
+    }
   }
 }
