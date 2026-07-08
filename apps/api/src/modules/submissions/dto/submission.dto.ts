@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 export class SubmissionFileDto {
   @ApiProperty({ example: 'https://res.cloudinary.com/...' })
   @IsString()
-  url: string;
+  url!: string;
 
   @ApiPropertyOptional({ example: 'application/pdf' })
   @IsOptional()
@@ -26,14 +26,14 @@ export class SubmissionFileDto {
 export class CreateSubmissionDto {
   @ApiProperty()
   @IsUUID()
-  assignmentId: string;
+  assignmentId!: string;
 
   @ApiProperty({ type: [SubmissionFileDto] })
   @IsArray()
   @ArrayMaxSize(5)
   @ValidateNested({ each: true })
   @Type(() => SubmissionFileDto)
-  files: SubmissionFileDto[];
+  files!: SubmissionFileDto[];
 }
 
 export class ResubmitDto {
@@ -42,14 +42,14 @@ export class ResubmitDto {
   @ArrayMaxSize(5)
   @ValidateNested({ each: true })
   @Type(() => SubmissionFileDto)
-  files: SubmissionFileDto[];
+  files!: SubmissionFileDto[];
 }
 
 export class EvaluateSubmissionDto {
   @ApiProperty({ example: 85 })
   @IsInt()
   @Min(0)
-  marks: number;
+  marks!: number;
 
   @ApiPropertyOptional({ example: 'Well done! Keep it up.' })
   @IsOptional()
@@ -58,5 +58,5 @@ export class EvaluateSubmissionDto {
 
   @ApiProperty({ example: 'approved', description: 'approved or rejected' })
   @IsString()
-  status: string;
+  status!: string;
 }
