@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,19 @@ export default function TeacherLessonsPage() {
         youtubeIdOrUrl: body.youtubeIdOrUrl,
         duration: Number(body.duration || 1),
       }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['videos'] }),
+  });
+  const updateVideo = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, FormDataEntryValue> }) =>
+      patchData(`/videos/${id}`, {
+        title: body.title,
+        youtubeIdOrUrl: body.youtubeIdOrUrl,
+        duration: Number(body.duration || 1),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['videos'] }),
+  });
+  const removeVideo = useMutation({
+    mutationFn: (id: string) => deleteData(`/videos/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['videos'] }),
   });
   const addResource = useMutation({
@@ -183,8 +197,23 @@ export default function TeacherLessonsPage() {
           <CardContent className="space-y-2">
             {videos.data?.map((video) => (
               <div key={video.id} className="rounded-md border p-3">
-                <p className="font-medium">{video.title}</p>
-                <p className="text-xs text-muted-foreground">{video.youtubeId}</p>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{video.title}</p>
+                    <p className="text-xs text-muted-foreground">{video.youtubeId} - {video.duration}s</p>
+                  </div>
+                  <Link href={`/teacher/progress?videoId=${video.id}`} className="text-sm font-medium text-primary">Progress</Link>
+                </div>
+                <form className="grid gap-2 sm:grid-cols-[1fr_1fr_110px_auto_auto]" onSubmit={(event) => {
+                  event.preventDefault();
+                  updateVideo.mutate({ id: video.id, body: Object.fromEntries(new FormData(event.currentTarget)) });
+                }}>
+                  <Field label="Title" name="title" defaultValue={video.title} required />
+                  <Field label="YouTube ID/URL" name="youtubeIdOrUrl" defaultValue={video.youtubeId} required />
+                  <Field label="Duration" name="duration" type="number" min={1} defaultValue={video.duration} />
+                  <div className="flex items-end"><Button size="sm" disabled={updateVideo.isPending}>Save</Button></div>
+                  <div className="flex items-end"><Button type="button" size="sm" variant="danger" onClick={() => removeVideo.mutate(video.id)}>Delete</Button></div>
+                </form>
               </div>
             ))}
           </CardContent>

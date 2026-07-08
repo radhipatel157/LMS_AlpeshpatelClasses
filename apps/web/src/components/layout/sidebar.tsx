@@ -10,6 +10,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   PlaySquare,
+  UserCircle,
   School,
   Users,
 } from 'lucide-react';
@@ -20,21 +21,28 @@ const nav = {
   ADMIN: [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
     { href: '/admin/users', label: 'Users', icon: Users },
+    { href: '/admin/teachers', label: 'Teachers', icon: Users },
+    { href: '/admin/students', label: 'Students', icon: Users },
     { href: '/admin/academics', label: 'Academics', icon: School },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/notifications', label: 'Broadcast', icon: Bell },
+    { href: '/admin/profile', label: 'Profile', icon: UserCircle },
   ],
   TEACHER: [
     { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/teacher/lessons', label: 'Lessons', icon: BookOpen },
     { href: '/teacher/assignments', label: 'Assignments', icon: ClipboardCheck },
+    { href: '/teacher/progress', label: 'Video Progress', icon: PlaySquare },
     { href: '/teacher/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/teacher/profile', label: 'Profile', icon: UserCircle },
   ],
   STUDENT: [
     { href: '/student', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/student/learn', label: 'Learn', icon: PlaySquare },
     { href: '/student/assignments', label: 'Assignments', icon: ClipboardCheck },
     { href: '/student/notifications', label: 'Inbox', icon: Bell },
+    { href: '/student/history', label: 'History', icon: BookOpen },
+    { href: '/student/profile', label: 'Profile', icon: UserCircle },
   ],
 } satisfies Record<Role, Array<{ href: string; label: string; icon: typeof LayoutDashboard }>>;
 

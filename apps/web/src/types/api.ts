@@ -18,7 +18,9 @@ export type StudentProfile = {
   standardId?: string | null;
   parentPhone?: string | null;
   address?: string | null;
+  dateOfBirth?: string | null;
   standard?: Standard | null;
+  user?: User;
 };
 
 export type TeacherProfile = {
@@ -26,6 +28,7 @@ export type TeacherProfile = {
   userId: string;
   qualification?: string | null;
   bio?: string | null;
+  user?: User;
 };
 
 export type Standard = {
@@ -132,6 +135,19 @@ export type Notification = {
   link?: string | null;
   isRead: boolean;
   createdAt: string;
+};
+
+export type VideoProgress = {
+  id?: string;
+  studentId?: string;
+  videoId?: string;
+  watchedSeconds: number;
+  completionPercentage: number | string;
+  lastPosition: number;
+  isCompleted: boolean;
+  lastWatchedAt?: string | null;
+  video?: Video;
+  student?: User;
 };
 
 export type PageMeta = {
