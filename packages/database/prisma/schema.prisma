@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  phone        String?
+  avatarUrl    String?
+  roleId       String
+  role         Role      @relation(fields: [roleId], references: [id])
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions             Session[]
+  student              Student?
+  teacher              Teacher?
+  notifications        Notification[]
+  activityLogs         ActivityLog[]
+  bookmarks            Bookmark[]
+  videoProgress        VideoProgress[]
+  submissions          AssignmentSubmission[]   @relation("SubmissionStudent")
+  assignmentsCreated   Assignment[]             @relation("AssignmentCreator")
+  submissionsEvaluated AssignmentSubmission[]   @relation("SubmissionEvaluator")
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique // ADMIN | TEACHER | STUDENT
+  users User[]
+
+  @@map("roles")
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  refreshTokenHash String
+  deviceInfo       String?
+  ipAddress        String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STUDENT & TEACHER PROFILES
+// ─────────────────────────────────────────────────────────────────
+
+model Student {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  standardId  String?
+  standard    Standard? @relation(fields: [standardId], references: [id])
+  parentPhone String?
+  address     String?
+  dateOfBirth DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([standardId])
+  @@map("students")
+}
+
+model Teacher {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  qualification String?
+  bio           String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ACADEMIC HIERARCHY
+// ─────────────────────────────────────────────────────────────────
+
+model Standard {
+  id        String    @id @default(uuid())
+  name      String    // e.g. 'Class 10'
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  subjects Subject[]
+  students Student[]
+
+  @@map("standards")
+}
+
+model Subject {
+  id          String    @id @default(uuid())
+  standardId  String
+  standard    Standard  @relation(fields: [standardId], references: [id])
+  name        String
+  description String?
+  order       Int       @default(0)
+  status      String    @default("published") // draft|published|archived
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  chapters Chapter[]
+
+  @@index([standardId])
+  @@map("subjects")
+}
+
+model Chapter {
+  id        String    @id @default(uuid())
+  subjectId String
+  subject   Subject   @relation(fields: [subjectId], references: [id])
+  name      String
+  order     Int       @default(0)
+  status    String    @default("published")
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lessons Lesson[]
+
+  @@index([subjectId])
+  @@map("chapters")
+}
+
+model Lesson {
+  id          String    @id @default(uuid())
+  chapterId   String
+  chapter     Chapter   @relation(fields: [chapterId], references: [id])
+  title       String
+  description String?
+  order       Int       @default(0)
+  status      String    @default("draft") // draft|published|archived
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  videos      Video[]
+  assignments Assignment[]
+  bookmarks   Bookmark[]
+  resources   LessonResource[]
+
+  @@index([chapterId])
+  @@map("lessons")
+}
+
+model LessonResource {
+  id        String   @id @default(uuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  title     String
+  type      String   @default("pdf") // pdf | document | image
+  fileUrl   String
+  fileSize  Int?
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+  @@map("lesson_resources")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// VIDEO SYSTEM
+// ─────────────────────────────────────────────────────────────────
+
+model Video {
+  id           String    @id @default(uuid())
+  lessonId     String
+  lesson       Lesson    @relation(fields: [lessonId], references: [id])
+  title        String
+  youtubeId    String
+  thumbnailUrl String?
+  duration     Int       // seconds
+  order        Int       @default(0)
+  status       String    @default("draft")
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  progress VideoProgress[]
+  sessions WatchSession[]
+
+  @@index([lessonId])
+  @@map("videos")
+}
+
+model VideoProgress {
+  id                   String    @id @default(uuid())
+  studentId            String
+  videoId              String
+  student              User      @relation(fields: [studentId], references: [id])
+  video                Video     @relation(fields: [videoId], references: [id])
+  watchedSeconds       Int       @default(0)
+  completionPercentage Decimal   @default(0) @db.Decimal(5, 2)
+  lastPosition         Int       @default(0)
+  isCompleted          Boolean   @default(false)
+  lastWatchedAt        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  sessions WatchSession[]
+
+  @@unique([studentId, videoId])
+  @@index([studentId])
+  @@index([videoId])
+  @@map("video_progress")
+}
+
+model WatchSession {
+  id             String        @id @default(uuid())
+  progressId     String
+  progress       VideoProgress @relation(fields: [progressId], references: [id])
+  studentId      String
+  videoId        String
+  sessionId      String        // client-generated UUID per play session
+  startPosition  Int
+  endPosition    Int
+  watchedSeconds Int
+  startedAt      DateTime
+  endedAt        DateTime?
+
+  @@index([progressId])
+  @@index([studentId])
+  @@index([videoId])
+  @@map("watch_sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ASSIGNMENT SYSTEM
+// ─────────────────────────────────────────────────────────────────
+
+model Assignment {
+  id                String    @id @default(uuid())
+  lessonId          String
+  lesson            Lesson    @relation(fields: [lessonId], references: [id])
+  teacherId         String
+  teacher           User      @relation("AssignmentCreator", fields: [teacherId], references: [id])
+  title             String
+  instructions      String    @db.Text
+  totalMarks        Int
+  deadline          DateTime
+  allowResubmission Boolean   @default(false)
+  attachments       Json?     // JSON array of Cloudinary URLs
+  status            String    @default("draft") // draft|published|closed
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([lessonId])
+  @@index([teacherId])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id                String     @id @default(uuid())
+  assignmentId      String
+  assignment        Assignment @relation(fields: [assignmentId], references: [id])
+  studentId         String
+  student           User       @relation("SubmissionStudent", fields: [studentId], references: [id])
+  submittedFiles    Json       // JSON array of Cloudinary URLs
+  submittedAt       DateTime   @default(now())
+  isLate            Boolean    @default(false)
+  resubmissionCount Int        @default(0)
+  status            String     @default("submitted") // pending|submitted|evaluated|approved|rejected
+  marksObtained     Int?
+  remarks           String?    @db.Text
+  evaluatedAt       DateTime?
+  evaluatedBy       String?
+  evaluator         User?      @relation("SubmissionEvaluator", fields: [evaluatedBy], references: [id])
+
+  @@index([assignmentId])
+  @@index([studentId])
+  @@map("assignment_submissions")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  type      String    // NEW_LESSON | ASSIGNMENT_CREATED | MARKS_PUBLISHED | etc.
+  title     String
+  body      String
+  link      String?   // Deep link in app
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUDIT & UTILITY
+// ─────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // LOGIN | LOGOUT | SUBMIT | WATCH | etc.
+  entity    String?  // e.g. 'Assignment', 'Video'
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, lessonId])
+  @@map("bookmarks")
+}
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

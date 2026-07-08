@@ -1,0 +1,66 @@
+import { IsString, IsInt, IsOptional, IsBoolean, IsDateString, IsArray, Min, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+
+export class CreateAssignmentDto {
+  @ApiProperty()
+  @IsUUID()
+  lessonId: string;
+
+  @ApiProperty({ example: 'Algebra Worksheet 1' })
+  @IsString()
+  title: string;
+
+  @ApiPropertyOptional({ example: 'Solve all questions from section A and B' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: '2026-07-15T23:59:59.000Z' })
+  @IsDateString()
+  dueDate: string;
+
+  @ApiProperty({ example: 100 })
+  @IsInt()
+  @Min(1)
+  maxMarks: number;
+
+  @ApiPropertyOptional({ type: [String], default: ['pdf'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedFileTypes?: string[];
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  allowResubmission?: boolean;
+}
+
+export class UpdateAssignmentDto extends PartialType(CreateAssignmentDto) {}
+
+export class SubmitAssignmentDto {
+  @ApiProperty({ example: 'https://res.cloudinary.com/...' })
+  @IsString()
+  fileUrl: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  fileSize?: number;
+}
+
+export class EvaluateSubmissionDto {
+  @ApiProperty({ example: 85 })
+  @IsInt()
+  @Min(0)
+  marks: number;
+
+  @ApiPropertyOptional({ example: 'Well done! Keep it up.' })
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+
+  @ApiProperty({ example: 'APPROVED', description: 'Evaluation decision status' })
+  @IsString()
+  status: string; // e.g. APPROVED or REJECTED
+}
